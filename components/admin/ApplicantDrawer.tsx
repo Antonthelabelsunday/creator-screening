@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { X, ExternalLink, Trash2 } from "lucide-react"
+import { X, ExternalLink, Trash2, Mail } from "lucide-react"
 import type { Application } from "@/lib/types"
 
 interface Props {
@@ -38,6 +38,14 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
       <p className="text-sm text-gray-800">{value || <span className="text-gray-300 italic">—</span>}</p>
     </div>
   )
+}
+
+function buildMailtoHref(email: string): string {
+  const firstName = email.split("@")[0].split(/[._]/)[0]
+  const name = firstName.charAt(0).toUpperCase() + firstName.slice(1)
+  const subject = "Creator collaboration – Label Sunday"
+  const body = `Hi ${name},\n\nWe came across your TikTok profile and we'd love to explore a potential collaboration with you.\n\nWe think your content would be a great fit for what we're working on — would you be open to a quick chat?\n\nLooking forward to hearing from you.\n\nBest,\nAnton\nLabel Sunday`
+  return `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
 }
 
 export default function ApplicantDrawer({ applicant, onClose, onDelete }: Props) {
@@ -156,7 +164,7 @@ export default function ApplicantDrawer({ applicant, onClose, onDelete }: Props)
           </div>
         </div>
 
-        {/* Footer — delete */}
+        {/* Footer — actions */}
         <div className="shrink-0 px-6 py-4 border-t border-gray-100">
           {confirmDelete ? (
             <div className="flex items-center gap-3">
@@ -177,13 +185,22 @@ export default function ApplicantDrawer({ applicant, onClose, onDelete }: Props)
               </button>
             </div>
           ) : (
-            <button
-              onClick={handleDelete}
-              className="flex items-center gap-2 text-sm text-gray-400 hover:text-red-600 transition-colors"
-            >
-              <Trash2 className="w-4 h-4" />
-              Delete applicant
-            </button>
+            <div className="flex items-center justify-between">
+              <a
+                href={buildMailtoHref(applicant.email)}
+                className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-900 transition-colors"
+              >
+                <Mail className="w-4 h-4" />
+                Send email
+              </a>
+              <button
+                onClick={handleDelete}
+                className="flex items-center gap-2 text-sm text-gray-400 hover:text-red-600 transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete
+              </button>
+            </div>
           )}
         </div>
       </div>
