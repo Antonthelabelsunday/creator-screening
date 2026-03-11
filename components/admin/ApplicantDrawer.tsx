@@ -44,7 +44,7 @@ function buildMailtoHref(email: string): string {
   const firstName = email.split("@")[0].split(/[._]/)[0]
   const name = firstName.charAt(0).toUpperCase() + firstName.slice(1)
   const subject = "Creator collaboration Label Sunday"
-  const body = `Hi ${name},\n\nWe came across your TikTok profile and we'd love to explore a potential collaboration with you.\n\nWe think your content would be a great fit for what we're working on — would you be open to a quick chat?\n\nAlso, could you share your price per video for collaborations?\n\nLooking forward to hearing from you.\n\nBest,\nAnton\nLabel SUNDAY`
+  const body = `Hi ${name},\n\nWe came across your TikTok profile and we'd love to explore a potential collaboration with you.\n\nWe think your content would be a great fit for what we're working on. Would you be open to a quick chat?\n\nAlso, could you share your price per video for collaborations?\n\nLooking forward to hearing from you.\n\nBest,\nAnton\nLabel SUNDAY`
   return `https://outlook.office.com/mail/deeplink/compose?to=${encodeURIComponent(email)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
 }
 
