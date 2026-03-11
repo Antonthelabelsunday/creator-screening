@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { calculateScore, getCategory, generateTags } from "@/lib/scoring"
 import { supabase } from "@/lib/supabase"
-import { getApplications, addApplication } from "@/lib/store"
+import { getApplications, addApplication, deleteApplication } from "@/lib/store"
 import type { FormData, Application } from "@/lib/types"
 
 export async function GET() {
@@ -71,5 +71,26 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     console.error("[Application Error]", err)
     return NextResponse.json({ error: "Failed to submit application" }, { status: 500 })
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  const id = req.nextUrl.searchParams.get("id")
+  if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 })
+
+  try {
+    if (supabase) {
+      const { error } = await supabase.from("applications").delete().eq("id", id)
+      if (error) {
+        console.error("[Supabase DELETE Error]", error)
+        return NextResponse.json({ error: "Failed to delete" }, { status: 500 })
+      }
+    } else {
+      deleteApplication(id)
+    }
+    return NextResponse.json({ success: true })
+  } catch (err) {
+    console.error("[Delete Error]", err)
+    return NextResponse.json({ error: "Failed to delete" }, { status: 500 })
   }
 }

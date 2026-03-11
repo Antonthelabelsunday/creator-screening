@@ -1,11 +1,13 @@
 "use client"
 
-import { X, ExternalLink } from "lucide-react"
+import { useState } from "react"
+import { X, ExternalLink, Trash2 } from "lucide-react"
 import type { Application } from "@/lib/types"
 
 interface Props {
   applicant: Application | null
   onClose: () => void
+  onDelete: (id: string) => Promise<void>
 }
 
 const CATEGORY_STYLES: Record<string, string> = {
@@ -38,8 +40,22 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
   )
 }
 
-export default function ApplicantDrawer({ applicant, onClose }: Props) {
+export default function ApplicantDrawer({ applicant, onClose, onDelete }: Props) {
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
   if (!applicant) return null
+
+  const handleDelete = async () => {
+    if (!confirmDelete) {
+      setConfirmDelete(true)
+      return
+    }
+    setDeleting(true)
+    await onDelete(applicant.id)
+    setDeleting(false)
+    setConfirmDelete(false)
+  }
 
   return (
     <>
@@ -130,7 +146,7 @@ export default function ApplicantDrawer({ applicant, onClose }: Props) {
               </div>
             </div>
 
-            <div className="pt-1 pb-4">
+            <div className="pt-1 pb-2">
               <p className="text-xs text-gray-400">
                 Applied {new Date(applicant.created_at).toLocaleDateString("en-GB", {
                   day: "numeric", month: "long", year: "numeric",
@@ -138,6 +154,37 @@ export default function ApplicantDrawer({ applicant, onClose }: Props) {
               </p>
             </div>
           </div>
+        </div>
+
+        {/* Footer — delete */}
+        <div className="shrink-0 px-6 py-4 border-t border-gray-100">
+          {confirmDelete ? (
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-50 transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+                {deleting ? "Deleting…" : "Yes, delete"}
+              </button>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                disabled={deleting}
+                className="px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600 hover:border-gray-400 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={handleDelete}
+              className="flex items-center gap-2 text-sm text-gray-400 hover:text-red-600 transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete applicant
+            </button>
+          )}
         </div>
       </div>
     </>

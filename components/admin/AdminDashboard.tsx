@@ -41,6 +41,12 @@ export default function AdminDashboard() {
   const [sortDir, setSortDir] = useState<SortDir>("desc")
   const [selected, setSelected] = useState<Application | null>(null)
 
+  const handleDelete = async (id: string) => {
+    await fetch(`/api/applications?id=${encodeURIComponent(id)}`, { method: "DELETE" })
+    setApplications((prev) => prev.filter((a) => a.id !== id))
+    setSelected(null)
+  }
+
   const fetchApplications = useCallback(async () => {
     setLoading(true)
     try {
@@ -254,7 +260,7 @@ export default function AdminDashboard() {
         )}
       </div>
 
-      {selected && <ApplicantDrawer applicant={selected} onClose={() => setSelected(null)} />}
+      {selected && <ApplicantDrawer applicant={selected} onClose={() => setSelected(null)} onDelete={handleDelete} />}
     </div>
   )
 }
