@@ -45,7 +45,7 @@ function buildMailtoHref(email: string): string {
   const name = firstName.charAt(0).toUpperCase() + firstName.slice(1)
   const subject = "Creator collaboration – Label Sunday"
   const body = `Hi ${name},\n\nWe came across your TikTok profile and we'd love to explore a potential collaboration with you.\n\nWe think your content would be a great fit for what we're working on — would you be open to a quick chat?\n\nLooking forward to hearing from you.\n\nBest,\nAnton\nLabel Sunday`
-  return `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+  return `https://outlook.office.com/mail/deeplink/compose?to=${encodeURIComponent(email)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
 }
 
 export default function ApplicantDrawer({ applicant, onClose, onDelete }: Props) {
@@ -188,6 +188,8 @@ export default function ApplicantDrawer({ applicant, onClose, onDelete }: Props)
             <div className="flex items-center justify-between">
               <a
                 href={buildMailtoHref(applicant.email)}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-900 transition-colors"
               >
                 <Mail className="w-4 h-4" />
