@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom scrollbar for admin table */
+.custom-scroll::-webkit-scrollbar {
+  height: 4px;
+  width: 4px;
+}
+.custom-scroll::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+.custom-scroll::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 2px;
+}
