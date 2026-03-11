@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
     // Fetch top 20 videos sorted by views (default sort)
     const [videosRes, metaRes] = await Promise.all([
       fetch(
-        `${CHARTEX_BASE}/external/v1/accounts/${encodeURIComponent(username)}/video-statistics/?limit=20`,
+        `${CHARTEX_BASE}/external/v1/accounts/${encodeURIComponent(username)}/video-statistics/?limit=20&sort_by=tiktok_video_views`,
         { headers: CHARTEX_HEADERS }
       ),
       fetch(
