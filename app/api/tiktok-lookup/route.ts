@@ -1,14 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import type { AverageViews, BestVideoRange } from "@/lib/types"
 
-const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY ?? ""
-const RAPIDAPI_HOST = "tiktok-scraper7.p.rapidapi.com"
-const RAPIDAPI_BASE = `https://${RAPIDAPI_HOST}`
-
-const headers = {
-  "x-rapidapi-key": RAPIDAPI_KEY,
-  "x-rapidapi-host": RAPIDAPI_HOST,
-}
+const CHARTEX_APP_ID    = process.env.CHARTEX_APP_ID    ?? ""
+const CHARTEX_APP_TOKEN = process.env.CHARTEX_APP_TOKEN ?? ""
+const CHARTEX_BASE      = "https://api.chartex.io/external/v1"
 
 function mapAvgViews(avg: number): AverageViews {
   if (avg < 10_000) return "Under 10k"
@@ -32,66 +27,53 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Missing username" }, { status: 400 })
   }
 
-  if (!RAPIDAPI_KEY) {
+  if (!CHARTEX_APP_ID || !CHARTEX_APP_TOKEN) {
     return NextResponse.json({ error: "API not configured" }, { status: 500 })
   }
 
-  try {
-    // Fetch user info and recent videos in parallel
-    const [userRes, videosRes] = await Promise.all([
-      fetch(`${RAPIDAPI_BASE}/user/info?username=${encodeURIComponent(username)}`, { headers }),
-      fetch(`${RAPIDAPI_BASE}/user/posts?username=${encodeURIComponent(username)}&count=20`, { headers }),
-    ])
+  const headers = {
+    "X-APP-ID":    CHARTEX_APP_ID,
+    "X-APP-TOKEN": CHARTEX_APP_TOKEN,
+  }
 
-    if (userRes.status === 404 || videosRes.status === 404) {
+  try {
+    const res = await fetch(
+      `${CHARTEX_BASE}/accounts/?platform=tiktok&username=${encodeURIComponent(username)}`,
+      { headers }
+    )
+
+    if (res.status === 404) {
       return NextResponse.json({ error: "TikTok account not found" }, { status: 404 })
     }
 
-    if (userRes.status === 401 || userRes.status === 403) {
+    if (res.status === 401 || res.status === 403) {
       return NextResponse.json({ error: "API key invalid or quota exceeded" }, { status: 500 })
     }
 
-    if (!userRes.ok || !videosRes.ok) {
+    if (!res.ok) {
       return NextResponse.json({ error: "Could not fetch TikTok stats" }, { status: 502 })
     }
 
-    const userJson = await userRes.json()
-    const videosJson = await videosRes.json()
+    const json = await res.json()
 
-    // tiktok-scraper7 user/info shape
-    const stats = userJson?.userInfo?.stats ?? userJson?.data?.stats ?? {}
-    const user  = userJson?.userInfo?.user  ?? userJson?.data?.user  ?? {}
+    const data   = json?.data ?? json
+    const stats  = data?.statistics ?? {}
+    const videos = data?.top_videos ?? data?.videos ?? []
 
-    // Videos — try multiple response shapes
-    const items: { stats?: { playCount?: number }; video?: unknown }[] =
-      videosJson?.data?.itemList ??
-      videosJson?.itemList ??
-      videosJson?.data?.videos ??
-      []
-
-    if (items.length === 0) {
-      return NextResponse.json({ error: "No video data found for this account" }, { status: 404 })
-    }
-
-    const playCounts = items
-      .map((v) => v?.stats?.playCount ?? 0)
-      .filter((n) => n > 0)
-
-    if (playCounts.length === 0) {
-      return NextResponse.json({ error: "Could not read view counts" }, { status: 404 })
-    }
-
-    const avgViewsRaw = playCounts.reduce((s, n) => s + n, 0) / playCounts.length
-    const bestVideoRaw = Math.max(...playCounts)
+    const followerCount = stats?.followers_count ?? stats?.follower_count ?? 0
+    const avgViewsRaw   = stats?.average_views   ?? stats?.avg_views      ?? 0
+    const bestVideoRaw  = videos.length > 0
+      ? Math.max(...videos.map((v: { views?: number; play_count?: number }) => v?.views ?? v?.play_count ?? 0))
+      : 0
 
     return NextResponse.json({
-      average_views: mapAvgViews(avgViewsRaw),
+      average_views:    mapAvgViews(avgViewsRaw),
       best_video_range: mapBestVideo(bestVideoRaw),
-      followers: stats.followerCount ?? 0,
-      author_name: user.nickname ?? user.uniqueId ?? username,
-      avatar_url: user.avatarThumb ?? null,
-      avg_views_raw: Math.round(avgViewsRaw),
-      best_video_raw: bestVideoRaw,
+      followers:        followerCount,
+      author_name:      data?.nickname ?? data?.username ?? username,
+      avatar_url:       data?.avatar   ?? null,
+      avg_views_raw:    Math.round(avgViewsRaw),
+      best_video_raw:   bestVideoRaw,
     })
   } catch (err) {
     console.error("[TikTok Lookup Error]", err)
