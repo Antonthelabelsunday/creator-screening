@@ -2,9 +2,19 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { ArrowRight, CheckCircle, Loader2 } from "lucide-react"
+import { ArrowRight, CheckCircle, Loader2, Search, AlertCircle } from "lucide-react"
 import type { FormData, Platform, CreatorType, AverageViews, BestVideoRange } from "@/lib/types"
 import { PLATFORMS, CREATOR_TYPES, AVERAGE_VIEWS, BEST_VIDEO_RANGES } from "@/lib/types"
+
+interface TikTokData {
+  average_views: AverageViews
+  best_video_range: BestVideoRange
+  followers: number
+  author_name: string
+  avatar_url: string | null
+  avg_views_raw: number
+  best_video_raw: number
+}
 
 const INITIAL: FormData = {
   email: "",
@@ -14,6 +24,21 @@ const INITIAL: FormData = {
   content_niche: "",
   average_views: "",
   best_video_range: "",
+}
+
+function formatNumber(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`
+  return String(n)
+}
+
+function extractTikTokUsername(input: string): string | null {
+  const trimmed = input.trim()
+  const urlMatch = trimmed.match(/tiktok\.com\/@([^/?&#\s]+)/i)
+  if (urlMatch) return urlMatch[1]
+  if (trimmed.startsWith("@")) return trimmed.slice(1)
+  if (/^[a-zA-Z0-9._]+$/.test(trimmed)) return trimmed
+  return null
 }
 
 // ── Reusable pill button ─────────────────────────────────────────────────────
@@ -71,6 +96,9 @@ export default function ApplicationForm() {
   const [form, setForm] = useState<FormData>(INITIAL)
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [tiktokData, setTiktokData] = useState<TikTokData | null>(null)
+  const [lookupLoading, setLookupLoading] = useState(false)
+  const [lookupError, setLookupError] = useState<string | null>(null)
 
   const set = (patch: Partial<FormData>) => setForm((f) => ({ ...f, ...patch }))
 
@@ -80,6 +108,49 @@ export default function ApplicationForm() {
         ? form.creator_type.filter((x) => x !== t)
         : [...form.creator_type, t],
     })
+
+  const handleProfileLinkChange = (value: string) => {
+    set({ profile_link: value })
+    if (tiktokData) {
+      setTiktokData(null)
+      set({ average_views: "", best_video_range: "" })
+    }
+    setLookupError(null)
+  }
+
+  const handleAnalyze = async () => {
+    const username = extractTikTokUsername(form.profile_link)
+    if (!username) {
+      setLookupError("Could not read a TikTok username from that link.")
+      return
+    }
+
+    setLookupLoading(true)
+    setLookupError(null)
+    setTiktokData(null)
+
+    try {
+      const res = await fetch(`/api/tiktok-lookup?username=${encodeURIComponent(username)}`)
+      const json = await res.json()
+
+      if (!res.ok) {
+        setLookupError(json.error ?? "Could not fetch TikTok data. Try again.")
+        return
+      }
+
+      setTiktokData(json as TikTokData)
+      set({
+        average_views: json.average_views as AverageViews,
+        best_video_range: json.best_video_range as BestVideoRange,
+      })
+    } catch {
+      setLookupError("Network error. Please try again.")
+    } finally {
+      setLookupLoading(false)
+    }
+  }
+
+  const canAnalyze = form.platform === "TikTok" && form.profile_link.trim().length > 0 && !lookupLoading
 
   const isValid =
     form.email.trim() &&
@@ -160,18 +231,65 @@ export default function ApplicationForm() {
             </div>
           </div>
 
-          {/* Profile link */}
+          {/* Profile link + Analyze (TikTok only) */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">
               Profile Link <span className="text-red-400">*</span>
             </label>
-            <input
-              type="url"
-              value={form.profile_link}
-              onChange={(e) => set({ profile_link: e.target.value })}
-              placeholder="https://tiktok.com/@yourhandle"
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-black focus:ring-2 focus:ring-black/5 transition-all"
-            />
+            <div className="flex gap-2">
+              <input
+                type="url"
+                value={form.profile_link}
+                onChange={(e) => handleProfileLinkChange(e.target.value)}
+                placeholder={
+                  form.platform === "TikTok"
+                    ? "https://tiktok.com/@yourhandle"
+                    : form.platform === "Instagram Reels"
+                    ? "https://instagram.com/yourhandle"
+                    : "https://..."
+                }
+                className="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-black focus:ring-2 focus:ring-black/5 transition-all"
+              />
+              {form.platform === "TikTok" && (
+                <button
+                  type="button"
+                  onClick={handleAnalyze}
+                  disabled={!canAnalyze}
+                  className="inline-flex items-center gap-1.5 px-4 py-3 rounded-xl bg-black text-white text-sm font-semibold disabled:opacity-30 disabled:cursor-not-allowed hover:bg-black/80 active:scale-95 transition-all whitespace-nowrap"
+                >
+                  {lookupLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Search className="w-4 h-4" />
+                  )}
+                  {lookupLoading ? "Analyzing…" : "Analyze"}
+                </button>
+              )}
+            </div>
+
+            {/* TikTok verified badge */}
+            {tiktokData && (
+              <div className="mt-2 flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-xl px-4 py-2.5">
+                <CheckCircle className="w-4 h-4 flex-shrink-0" />
+                <span>
+                  <span className="font-semibold">@{extractTikTokUsername(form.profile_link)}</span>
+                  {" · "}
+                  {formatNumber(tiktokData.followers)} followers
+                  {" · "}
+                  ~{formatNumber(tiktokData.avg_views_raw)} avg views
+                  {" · "}
+                  best {formatNumber(tiktokData.best_video_raw)} views
+                </span>
+              </div>
+            )}
+
+            {/* Lookup error */}
+            {lookupError && (
+              <div className="mt-2 flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <span>{lookupError}</span>
+              </div>
+            )}
           </div>
 
           {/* Divider */}
@@ -210,7 +328,7 @@ export default function ApplicationForm() {
             />
           </div>
 
-          {/* Average views */}
+          {/* Stats — auto-filled by analyze or manual */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Average views per video <span className="text-red-400">*</span>
@@ -225,9 +343,11 @@ export default function ApplicationForm() {
                 />
               ))}
             </div>
+            {tiktokData && (
+              <p className="mt-1.5 text-xs text-green-600">Auto-filled from your TikTok profile</p>
+            )}
           </div>
 
-          {/* Best video range */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Best performing video <span className="text-red-400">*</span>
@@ -242,6 +362,9 @@ export default function ApplicationForm() {
                 />
               ))}
             </div>
+            {tiktokData && (
+              <p className="mt-1.5 text-xs text-green-600">Auto-filled from your TikTok profile</p>
+            )}
           </div>
         </div>
 
