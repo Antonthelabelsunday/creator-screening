@@ -1,5 +1,5 @@
-import LandingPage from "@/components/landing/LandingPage"
+import ApplicationForm from "@/components/form/ApplicationForm"
 
 export default function Home() {
-  return <LandingPage />
+  return <ApplicationForm />
 }
